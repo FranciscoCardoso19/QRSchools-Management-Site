@@ -1,8 +1,8 @@
 <?php
 
 //Dados do utilizador da base de dados
-$userName = 'qrschools_admin';
-$userPassword = 'qrschoolsadmin';
+$userName = 'private_info_user';
+$userPassword = 'privateuser';
 $dataBase = 'qrschools';
 $dns = 'localhost';
 

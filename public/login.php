@@ -7,7 +7,9 @@
         <meta name="description" content="" />
         <meta name="author" content="" />
         <title>Login - SB Admin</title>
-        <link href="css/styles.css" rel="stylesheet" />
+        <link href="assets/css/styles.css" rel="stylesheet" />
+        <link href="assets/css/myStyles.css" rel="stylesheet" />
+        <link href="https://cdn.jsdelivr.net/npm/simple-datatables@7.1.2/dist/style.min.css" rel="stylesheet" />
         <script src="https://use.fontawesome.com/releases/v6.3.0/js/all.js" crossorigin="anonymous"></script>
     </head>
     <body class="bg-primary">
@@ -34,13 +36,13 @@
                                                 <label class="form-check-label" for="inputRememberPassword">Lembrar Palavra-Passe</label>
                                             </div>
                                             <div class="d-flex align-items-center justify-content-between mt-4 mb-0">
-                                                <a class="small" href="password.html">Recuperar Palavra-Passe</a>
-                                                <a class="btn btn-primary" href="index.html">Entrar</a>
+                                                <a class="small" href="password.php">Recuperar Palavra-Passe</a>
+                                                <a class="btn btn-primary" href="index.php">Entrar</a>
                                             </div>
                                         </form>
                                     </div>
                                     <div class="card-footer text-center py-3">
-                                        <div class="small"><a href="register.html">Precisa de uma conta? Registe-se aqui!</a></div>
+                                        <div class="small"><a href="register.php">Precisa de uma conta? Registe-se aqui!</a></div>
                                     </div>
                                 </div>
                             </div>

@@ -1,0 +1,6 @@
+-- Active: 1726580715675@@127.0.0.1@3306
+DROP DATABASE IF EXISTS qrschools;
+
+CREATE DATABASE qrschools;
+
+USE qrschools; 
