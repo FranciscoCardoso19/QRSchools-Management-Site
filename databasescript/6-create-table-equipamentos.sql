@@ -6,7 +6,7 @@ CREATE TABLE equipamentos(
     id INT(11) UNSIGNED AUTO_INCREMENT PRIMARY KEY,
     id_categoria INT(11) UNSIGNED NOT NULL,
     id_estado INT(11) UNSIGNED NOT NULL,
-    nome VARCHAR(100) NOT NULL,
+    name VARCHAR(100) NOT NULL,
     num_serie BIGINT UNSIGNED UNIQUE,
     descricao VARCHAR(355) NOT NULL,
     qrcode VARCHAR(255),
@@ -16,7 +16,7 @@ CREATE TABLE equipamentos(
 
 -- qrcode VARCHAR(255) NOT NULL UNIQUE
 
-INSERT INTO equipamentos(id, id_categoria, id_estado, nome, descricao, qrcode)
+INSERT INTO equipamentos(id, id_categoria, id_estado, name, descricao, qrcode)
     VALUES
     (1, 9, 1, 'Armário Baixo-01', 'Armario descrição', NULL),
     (2, 9, 1, 'Armário Baixo-02', 'Armario descrição', NULL),
