@@ -56,7 +56,6 @@ try{
     echo(json_encode($result, JSON_PRETTY_PRINT));
 
 }  catch (ExpiredException $e) {
-    // provided JWT is trying to be used after "exp" claim.
     $result = [
         'success' => false,
         'erro' => $e->getMessage()
