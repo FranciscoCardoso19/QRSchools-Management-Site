@@ -6,7 +6,7 @@ use PHPMailer\PHPMailer\PHPMailer;
 use PHPMailer\PHPMailer\Exception;
 
 ob_start();
-include_once 'emailtemplate.php';
+include_once('../../backend/emailtemplate.php');
 $corpo_email = ob_get_clean();
 
 $mail = new PHPMailer(true);
