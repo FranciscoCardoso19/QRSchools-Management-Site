@@ -1,67 +1,47 @@
 <?php
 require '../../vendor/autoload.php';
 
-include_once('../../backend/connection.php');
+include_once('../../backend/db.php');
 include_once('../../backend/models/user.php');
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
+use Firebase\JWT\ExpiredException;
 
 $key = 'psi_jwt_secret_key';
 
-mysqli_begin_transaction($connection);
-
-try{
+try {
     $headers = getallheaders();
-
     $authorization = isset($headers['Authorization']) ? $headers['Authorization'] : '';
 
-    // Validação 1 Verificar se o metodo é GET
-    if($_SERVER['REQUEST_METHOD'] != 'GET'){
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
         throw new Exception('Método não permitido');
     }
 
-    if(preg_match('/Bearer\s(\S+)/', $authorization, $matches)){
+    if (preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
         $jwt = $matches[1];
+    } else {
+        throw new Exception('Token JWT não fornecido ou mal formatado');
     }
 
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    // Validação 2.1:
-    // Validar se o id do utilizador está a ser enviado corretamente
-    if(!isset($_GET['id'])){
+    if (!isset($_GET['id'])) {
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
 
-    // Validação 4:
-    // Validar se o id do utilizador existe na base de dados
     $id = $_GET['id'];
 
-    $sqlSelect = 'SELECT id, name, email, password, id_cargo FROM users WHERE id = ?';
+    $sql = 'SELECT id, name, email, password, id_cargo FROM users WHERE id = ?';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute([$id]);
 
-    if($stmt = mysqli_prepare($connection, $sqlSelect)){
-        mysqli_stmt_bind_param($stmt, 'i', $id);
-        
-        if(mysqli_stmt_execute($stmt)){
-
-            $r = mysqli_stmt_store_result($stmt);
-
-
-            if(mysqli_stmt_num_rows($stmt) == 0){
-                throw new Exception('Utilizador não encontrado');
-            }
-
-            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $idCargo);
-            mysqli_stmt_fetch($stmt);
-            $user = new User($id, $name, $email, $password, $idCargo);
-
-            //var_dump($stmt);
-            //var_dump(mysqli_num_rows($result));
-            //die;
-        }else{
-            throw new Exception('Erro ao executar a query');
-        }
+    if ($stmt->rowCount() === 0) {
+        throw new Exception('Utilizador não encontrado');
     }
+
+    $row = $stmt->fetch(PDO::FETCH_ASSOC);
+    $user = new User($row['id'], $row['name'], $row['email'], $row['password'], $row['id_cargo']);
 
     $result = [
         'success' => true,
@@ -70,27 +50,20 @@ try{
         ]
     ];
 
-    echo(json_encode($result, JSON_PRETTY_PRINT));
+    echo json_encode($result, JSON_PRETTY_PRINT);
 
-}catch (ExpiredException $e) {
-    // provided JWT is trying to be used after "exp" claim.
-    $result = [
+} catch (ExpiredException $e) {
+    echo json_encode([
+        'success' => false,
+        'erro' => 'Token expirado: ' . $e->getMessage()
+    ]);
+
+} catch (Exception $e) {
+    echo json_encode([
         'success' => false,
         'erro' => $e->getMessage()
-    ];
+    ]);
 
-    echo(json_encode($result));
-
-} catch(Exception $e){
-    $result = [
-        'success' => false,
-        'erro' => $e->getMessage()
-    ];
-
-    echo(json_encode($result));
-
-}finally{
-    mysqli_close($connection);
+} finally {
+    $pdo = null;
 }
-
-?>

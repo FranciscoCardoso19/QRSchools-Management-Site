@@ -1,14 +1,12 @@
 <?php
 require '../../vendor/autoload.php';
-include_once('../../backend/connection.php');
+include_once('../../backend/db.php');
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Firebase\JWT\ExpiredException;
 
 $key = 'psi_jwt_secret_key';
-
-mysqli_begin_transaction($connection);
 
 try {
     $headers = getallheaders();
@@ -25,75 +23,64 @@ try {
     $jwt = $matches[1];
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    $postLenght = count($_POST);
-    if($postLenght != 6){
-        throw new Exception('Dados insuficientes');
-    }
-
-    if(!isset($_POST['idCategoria']) || !isset($_POST['idEstado']) || !isset($_POST['name']) || !isset($_POST['numSerie']) || !isset($_POST['descricao']) || !isset($_POST['qrcode'])){
+    if (
+        !isset($_POST['idCategoria']) || !isset($_POST['idEstado']) || !isset($_POST['name']) ||
+        !isset($_POST['numSerie']) || !isset($_POST['descricao']) || !isset($_POST['qrcode'])
+    ) {
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
 
-    $idCategoria = $_POST['idCategoria'];
-    $idEstado = $_POST['idEstado'];
-    $name = $_POST['name'];
-    $numSerie = $_POST['numSerie'];
-    $descricao = $_POST['descricao'];
-    $qrcode = $_POST['qrcode'];
+    $idCategoria = trim($_POST['idCategoria']);
+    $idEstado = trim($_POST['idEstado']);
+    $name = trim($_POST['name']);
+    $numSerie = trim($_POST['numSerie']);
+    $descricao = trim($_POST['descricao']);
+    $qrcode = trim($_POST['qrcode']);
 
-    if(strlen($idCategoria) == 0 || strlen($idEstado) == 0 || strlen($name) == 0 || strlen($numSerie) == 0 || strlen($descricao) == 0 || strlen($qrcode) == 0){
+    if (empty($idCategoria) || empty($idEstado) || empty($name) || empty($numSerie) || empty($descricao) || empty($qrcode)
+    ) {
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
 
-    $sql = 'INSERT INTO equipamentos (id_categoria, id_estado, name, num_serie, descricao, qrcode) VALUES (?, ?, ?, ?, ?, ?)';
+    $pdo->beginTransaction();
 
-    if($stmt = mysqli_prepare($connection, $sql)){
-        mysqli_stmt_bind_param($stmt, 'iisiss', $idCategoria, $idEstado, $name, $numSerie, $descricao, $qrcode);
+    $sql = 'INSERT INTO equipamentos (id_categoria, id_estado, name, num_serie, descricao, qrcode) 
+            VALUES (:idCategoria, :idEstado, :name, :numSerie, :descricao, :qrcode)';
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':idCategoria', $idCategoria, PDO::PARAM_INT);
+    $stmt->bindParam(':idEstado', $idEstado, PDO::PARAM_INT);
+    $stmt->bindParam(':name', $name, PDO::PARAM_STR);
+    $stmt->bindParam(':numSerie', $numSerie, PDO::PARAM_STR);
+    $stmt->bindParam(':descricao', $descricao, PDO::PARAM_STR);
+    $stmt->bindParam(':qrcode', $qrcode, PDO::PARAM_STR);
 
-        if(mysqli_stmt_execute($stmt)){
-            if(!mysqli_stmt_affected_rows($stmt)){
-                throw new Exception('Erro ao inserir o equipamento na base de dados');
-            }
-        }else{
-            throw new Exception('Erro ao executar a query');
-        }
-    }else{
-        throw new Exception('Erro ao preparar a query');
+    if (!$stmt->execute()) {
+        throw new Exception('Erro ao inserir o equipamento na base de dados');
     }
 
-    mysqli_commit($connection);
+    $pdo->commit();
 
     $result = [
         'success' => true,
-        'message' => 'Equipamento criada com sucesso',
+        'message' => 'Equipamento criado com sucesso',
     ];
 
-    echo(json_encode($result, JSON_PRETTY_PRINT));
-
-}catch (ExpiredException $e) {
-    // provided JWT is trying to be used after "exp" claim.
-    $result = [
-        'success' => false,
-        'erro' => $e->getMessage()
-    ];
-
-    echo(json_encode($result));
+    echo json_encode($result, JSON_PRETTY_PRINT);
 
 } catch (ExpiredException $e) {
-    mysqli_rollback($connection);
     echo json_encode([
         'success' => false,
         'error' => 'Token expirado: ' . $e->getMessage()
     ]);
 
 } catch (Exception $e) {
-    mysqli_rollback($connection);
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage()
     ]);
-
-} finally {
-    mysqli_close($connection);
 }
 ?>

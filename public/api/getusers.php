@@ -1,7 +1,7 @@
 <?php
 require '../../vendor/autoload.php';
 
-include_once('../../backend/connection.php');
+include_once('../../backend/db.php');
 include_once('../../backend/models/user.php');
 
 use Firebase\JWT\JWT;
@@ -10,41 +10,29 @@ use Firebase\JWT\ExpiredException;
 
 $key = 'psi_jwt_secret_key';
 
-try{
+try {
     $headers = getallheaders();
-
     $authorization = isset($headers['Authorization']) ? $headers['Authorization'] : '';
 
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        throw new Exception('Método não permitido');
+    }
 
-    if(preg_match('/Bearer\s(\S+)/', $authorization, $matches)){
+    if (preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
         $jwt = $matches[1];
+    } else {
+        throw new Exception('Token JWT não fornecido ou mal formatado');
     }
 
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    // Validação 1:
-    // Verifica se o método é GET
-    if($_SERVER['REQUEST_METHOD'] != 'GET'){
-        throw new Exception('Método não permitido');
-    }
+    $sql = 'SELECT id, name, email, password, id_cargo FROM users';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute();
 
-    $sqlSelect = 'SELECT * FROM users';
-
-    if($stmt = mysqli_prepare($connection, $sqlSelect)){
-        
-        if(mysqli_stmt_execute($stmt)){
-            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $idCargo);
-            
-            $users = [];
-
-            while(mysqli_stmt_fetch($stmt)){
-                //var_dump($id, $name, $address, $email, $password, $photo);
-                $user = new User($id, $name, $email, $password, $idCargo);
-                $users[$id] = $user;
-            }
-        }else{
-            throw new Exception('Erro ao executar a query');
-        }
+    $users = [];
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $users[$row['id']] = new User($row['id'], $row['name'], $row['email'], $row['password'], $row['id_cargo']);
     }
 
     $result = [
@@ -54,26 +42,20 @@ try{
         ]
     ];
 
-    echo(json_encode($result, JSON_PRETTY_PRINT));
+    echo json_encode($result, JSON_PRETTY_PRINT);
 
-}  catch (ExpiredException $e) {
-    // provided JWT is trying to be used after "exp" claim.
-    $result = [
+} catch (ExpiredException $e) {
+    echo json_encode([
+        'success' => false,
+        'erro' => 'Token expirado: ' . $e->getMessage()
+    ]);
+
+} catch (Exception $e) {
+    echo json_encode([
         'success' => false,
         'erro' => $e->getMessage()
-    ];
+    ]);
 
-    echo(json_encode($result));
-
-} catch(Exception $e){
-    $result = [
-        'success' => false,
-        'erro' => $e->getMessage()
-    ];
-
-    echo(json_encode($result));
-
-}finally{
-    mysqli_close($connection);
+} finally {
+    $pdo = null;
 }
-?>

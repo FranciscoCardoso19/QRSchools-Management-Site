@@ -1,65 +1,75 @@
 <?php
-include_once('../../backend/connection.php');
+require '../../vendor/autoload.php';
+include_once('../../backend/db.php');
 
-mysqli_begin_transaction($connection);
+use Firebase\JWT\JWT;
+use Firebase\JWT\Key;
+use Firebase\JWT\ExpiredException;
 
-try{ 
-    if($_SERVER['REQUEST_METHOD'] != 'POST'){
+$key = 'psi_jwt_secret_key';
+
+try {
+    $headers = getallheaders();
+    $authorization = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+
+    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método não permitido');
     }
-    
-    $postLenght = count($_POST);
-    if($postLenght != 2){
-        throw new Exception('Dados insuficientes');
+
+    if (!preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
+        throw new Exception('Token JWT não fornecido ou mal formatado.');
     }
-    
-    if(!isset($_POST['nome']) ){
+
+    $jwt = $matches[1];
+    $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
+
+    if (!isset($_POST['nome'])) {
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
-    
+
     $nome = trim($_POST['nome']);
 
-    if(strlen($nome) == 0 ){
+    if (strlen($nome) === 0) {
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
-    
-    $sql = 'INSERT INTO cargos  (nome) VALUES (?)'; 
-            
-    if($stmt = mysqli_prepare($connection, $sql)){
-        mysqli_stmt_bind_param($stmt, 's', $nome);
-        
-        if(mysqli_stmt_execute($stmt)){
-            //var_dump($stmt);
-            if(!mysqli_stmt_affected_rows($stmt)){
-                throw new Exception('Erro ao inserir o Cargo na base de dados');
-            }
-        }else{
-            throw new Exception('Erro ao executar a query');
-        }
-    }else{
-        throw new Exception('Erro ao preparar a query');
+
+    $pdo->beginTransaction();
+
+    $sql = 'INSERT INTO cargos (nome) VALUES (:nome)';
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':nome', $nome, PDO::PARAM_STR);
+
+    if (!$stmt->execute()) {
+        throw new Exception('Erro ao executar a query');
     }
 
-    mysqli_commit($connection);
+    if ($stmt->rowCount() === 0) {
+        throw new Exception('Erro ao inserir o Cargo na base de dados');
+    }
+
+    $pdo->commit();
 
     $result = [
         'success' => true,
         'message' => 'Cargo criado com sucesso',
     ];
 
-    echo(json_encode($result));
+    echo json_encode($result, JSON_PRETTY_PRINT);
 
-}catch(Exception $e){
-    mysqli_rollback($connection);
-    //echo('Error: ' . $e->getMessage());
-    $result = [
+} catch (ExpiredException $e) {
+    echo json_encode([
         'success' => false,
-        'erro' => $e->getMessage()
-    ];
+        'error' => 'Token expirado: ' . $e->getMessage()
+    ]);
+} catch (Exception $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
 
-    echo(json_encode($result));
-
-}finally{
-    mysqli_close($connection);
+    echo json_encode([
+        'success' => false,
+        'error' => $e->getMessage()
+    ]);
+} finally {
+    $pdo = null;
 }
-?>

@@ -1,14 +1,12 @@
 <?php
 require '../../vendor/autoload.php';
-include_once('../../backend/connection.php');
+include_once('../../backend/db.php');
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
 use Firebase\JWT\ExpiredException;
 
 $key = 'psi_jwt_secret_key';
-
-mysqli_begin_transaction($connection);
 
 try {
     $headers = getallheaders();
@@ -25,52 +23,54 @@ try {
     $jwt = $matches[1];
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    // Tenta obter o ID do corpo ou da query string
+    $input = json_decode(file_get_contents("php://input"), true) ?? [];
     $id = isset($input['id']) ? intval($input['id']) : (isset($_GET['id']) ? intval($_GET['id']) : null);
 
     if (!$id) {
-        throw new Exception('ID da equipamento não fornecido.');
+        throw new Exception('ID do equipamento não fornecido.');
     }
 
-    $sqlDelete = 'DELETE FROM equipamentos WHERE id = ?';
-    if ($stmt = mysqli_prepare($connection, $sqlDelete)) {
-        mysqli_stmt_bind_param($stmt, 'i', $id);
+    $pdo->beginTransaction();
 
-        if (mysqli_stmt_execute($stmt)) {
-            if (mysqli_stmt_affected_rows($stmt) === 0) {
-                throw new Exception('Equipamento não encontrado ou já removido.');
-            }
-        } else {
-            throw new Exception('Erro ao executar a query.');
-        }
+    $sql = 'DELETE FROM equipamentos WHERE id = :id';
+    $stmt = $pdo->prepare($sql);
+    $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
-        mysqli_stmt_close($stmt);
-    } else {
-        throw new Exception('Erro ao preparar a query SQL.');
+    if (!$stmt->execute()) {
+        throw new Exception('Erro ao executar a query.');
     }
 
-    mysqli_commit($connection);
+    if ($stmt->rowCount() === 0) {
+        throw new Exception('Equipamento não encontrado ou já removido.');
+    }
+
+    $pdo->commit();
 
     echo json_encode([
         'success' => true,
-        'message' => 'Equipamento removida com sucesso.'
+        'message' => 'Equipamento removido com sucesso.'
     ], JSON_PRETTY_PRINT);
 
 } catch (ExpiredException $e) {
-    mysqli_rollback($connection);
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     echo json_encode([
         'success' => false,
         'error' => 'Token expirado: ' . $e->getMessage()
     ]);
 
 } catch (Exception $e) {
-    mysqli_rollback($connection);
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     echo json_encode([
         'success' => false,
         'error' => $e->getMessage()
     ]);
 
 } finally {
-    mysqli_close($connection);
+    $pdo = null;
 }
-?>

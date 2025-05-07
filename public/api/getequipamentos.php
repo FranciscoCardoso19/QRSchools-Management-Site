@@ -1,7 +1,7 @@
 <?php
 require '../../vendor/autoload.php';
 
-include_once('../../backend/connection.php');
+include_once('../../backend/db.php'); 
 include_once('../../backend/models/equipamento.php');
 
 use Firebase\JWT\JWT;
@@ -10,68 +10,63 @@ use Firebase\JWT\ExpiredException;
 
 $key = 'psi_jwt_secret_key';
 
-try{
+try {
     $headers = getallheaders();
-
     $authorization = isset($headers['Authorization']) ? $headers['Authorization'] : '';
 
+    if ($_SERVER['REQUEST_METHOD'] !== 'GET') {
+        throw new Exception('Método não permitido');
+    }
 
-    if(preg_match('/Bearer\s(\S+)/', $authorization, $matches)){
+    if (preg_match('/Bearer\s(\S+)/', $authorization, $matches)) {
         $jwt = $matches[1];
+    } else {
+        throw new Exception('Token JWT não fornecido ou mal formatado');
     }
 
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    // Validação 1:
-    // Verifica se o método é GET
-    if($_SERVER['REQUEST_METHOD'] != 'GET'){
-        throw new Exception('Método não permitido');
+    $sql = 'SELECT * FROM equipamentos';
+    $stmt = $pdo->prepare($sql);
+
+    if (!$stmt->execute()) {
+        throw new Exception('Erro ao executar a query');
     }
 
-    $sqlSelect = 'SELECT * FROM equipamentos';
+    $equipamentos = [];
 
-    if($stmt = mysqli_prepare($connection, $sqlSelect)){
-        
-        if(mysqli_stmt_execute($stmt)){
-            mysqli_stmt_bind_result($stmt, $id, $idCategoria, $idEstado, $name, $numSerie, $descricao, $qrcode);
-            
-            $equipamento = [];
-
-            while(mysqli_stmt_fetch($stmt)){
-                $equipamento = new equipamento($id, $idCategoria, $idEstado, $name, $numSerie, $descricao, $qrcode);
-                $equipamentos[$id] = $equipamento;
-            }
-        }else{
-            throw new Exception('Erro ao executar a query');
-        }
+    while ($row = $stmt->fetch(PDO::FETCH_ASSOC)) {
+        $equipamento = new Equipamento(
+            $row['id'],
+            $row['id_categoria'],
+            $row['id_estado'],
+            $row['name'],
+            $row['num_serie'],
+            $row['descricao'],
+            $row['qrcode']
+        );
+        $equipamentos[$row['id']] = $equipamento;
     }
 
-    $result = [
+    echo json_encode([
         'success' => true,
         'data' => [
-            'equipamentos' => $equipamentos,
+            'equipamentos' => $equipamentos
         ]
-    ];
+    ], JSON_PRETTY_PRINT);
 
-    echo(json_encode($result, JSON_PRETTY_PRINT));
+} catch (ExpiredException $e) {
+    echo json_encode([
+        'success' => false,
+        'erro' => 'Token expirado: ' . $e->getMessage()
+    ]);
 
-}  catch (ExpiredException $e) {
-    $result = [
+} catch (Exception $e) {
+    echo json_encode([
         'success' => false,
         'erro' => $e->getMessage()
-    ];
+    ]);
 
-    echo(json_encode($result));
-
-} catch(Exception $e){
-    $result = [
-        'success' => false,
-        'erro' => $e->getMessage()
-    ];
-
-    echo(json_encode($result));
-
-}finally{
-    mysqli_close($connection);
+} finally {
+    $pdo = null;
 }
-?>
