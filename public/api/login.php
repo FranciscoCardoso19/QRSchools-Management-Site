@@ -49,11 +49,9 @@ try{
 
         if(mysqli_stmt_execute($stmt)){
             //var_dump($stmt);
-            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $id_cargo);
+            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $idCargo);
             if(mysqli_stmt_fetch($stmt)){
-                //var_dump($id, $name, $address, $email, $password, $photo);
                 $user = new User($id, $name, $email, $password, $idCargo);
-                //die;
             }
         }else{
             throw new Exception('Erro ao executar a query');
@@ -66,7 +64,7 @@ try{
         'iss' => 'http://mydev.qrschools.com',
         'aud' => 'http://mydev.qrschools.com',
         'iat' => time(),
-        'exp' => time() + 3600,
+        'exp' => time() + 360000000,
         'data' => [
             'id' => $user->id,
             'email' => $user->email,

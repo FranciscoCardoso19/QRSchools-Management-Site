@@ -24,35 +24,32 @@ try {
 
     $jwt = $matches[1];
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
-
+    
     $postLenght = count($_POST);
-    if($postLenght != 6){
+    if($postLenght != 2){
         throw new Exception('Dados insuficientes');
     }
-
-    if(!isset($_POST['idCategoria']) || !isset($_POST['idEstado']) || !isset($_POST['name']) || !isset($_POST['numSerie']) || !isset($_POST['descricao']) || !isset($_POST['qrcode'])){
+    
+    if(!isset($_POST['idUser']) || !isset($_POST['dataInventario'])){
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
+    
+    $idUser = trim($_POST['idUser']);
+    $dataInventario = trim($_POST['dataInventario']);
 
-    $idCategoria = $_POST['idCategoria'];
-    $idEstado = $_POST['idEstado'];
-    $name = $_POST['name'];
-    $numSerie = $_POST['numSerie'];
-    $descricao = $_POST['descricao'];
-    $qrcode = $_POST['qrcode'];
-
-    if(strlen($idCategoria) == 0 || strlen($idEstado) == 0 || strlen($name) == 0 || strlen($numSerie) == 0 || strlen($descricao) == 0 || strlen($qrcode) == 0){
+    if(strlen($idUser) == 0 || strlen($dataInventario) == 0){
         throw new Exception('Dados insuficientes. Preencha os dados corretamente');
     }
-
-    $sql = 'INSERT INTO equipamentos (id_categoria, id_estado, name, num_serie, descricao, qrcode) VALUES (?, ?, ?, ?, ?, ?)';
-
+    
+    $sql = 'INSERT INTO inventarios  (id_user, data_inventario) VALUES (?, ?)'; 
+            
     if($stmt = mysqli_prepare($connection, $sql)){
-        mysqli_stmt_bind_param($stmt, 'iisiss', $idCategoria, $idEstado, $name, $numSerie, $descricao, $qrcode);
-
+        mysqli_stmt_bind_param($stmt, 'is', $idUser, $dataInventario);
+        
         if(mysqli_stmt_execute($stmt)){
+            //var_dump($stmt);
             if(!mysqli_stmt_affected_rows($stmt)){
-                throw new Exception('Erro ao inserir o equipamento na base de dados');
+                throw new Exception('Erro ao inserir o inventario na base de dados');
             }
         }else{
             throw new Exception('Erro ao executar a query');
@@ -65,7 +62,7 @@ try {
 
     $result = [
         'success' => true,
-        'message' => 'Equipamento criada com sucesso',
+        'message' => 'Inventario criado com sucesso',
     ];
 
     echo(json_encode($result, JSON_PRETTY_PRINT));
