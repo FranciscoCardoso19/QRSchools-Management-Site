@@ -2,7 +2,7 @@
 require '../../vendor/autoload.php';
 
 include_once('../../backend/connection.php');
-include_once('../../backend/models/user.php');
+include_once('../../backend/models/inventario.php');
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -37,7 +37,7 @@ try{
     // Validar se o id do utilizador existe na base de dados
     $id = $_GET['id'];
 
-    $sqlSelect = 'SELECT id, name, email, password, id_cargo FROM users WHERE id = ?';
+    $sqlSelect = 'SELECT * FROM inventarios WHERE id = ?';
 
     if($stmt = mysqli_prepare($connection, $sqlSelect)){
         mysqli_stmt_bind_param($stmt, 'i', $id);
@@ -46,14 +46,13 @@ try{
 
             $r = mysqli_stmt_store_result($stmt);
 
-
             if(mysqli_stmt_num_rows($stmt) == 0){
-                throw new Exception('Utilizador não encontrado');
+                throw new Exception('inventario não encontrado');
             }
 
-            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $idCargo);
+            mysqli_stmt_bind_result($stmt, $id, $idUser, $dataInventario);
             mysqli_stmt_fetch($stmt);
-            $user = new User($id, $name, $email, $password, $idCargo);
+            $inventario = new Inventario($id, $idUser, $dataInventario);
 
             //var_dump($stmt);
             //var_dump(mysqli_num_rows($result));
@@ -66,7 +65,7 @@ try{
     $result = [
         'success' => true,
         'data' => [
-            'user' => $user,
+            'inventario' => $inventario,
         ]
     ];
 

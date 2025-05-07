@@ -83,6 +83,7 @@ try{
     $sql = 'UPDATE users SET name = ?, password = ? WHERE id = ?';
     if($stmt = mysqli_prepare($connection, $sql)){
         mysqli_stmt_bind_param($stmt, 'ssi', $name, $password, $id);
+
         
         if(mysqli_stmt_execute($stmt)){
             //var_dump($stmt);
@@ -99,45 +100,54 @@ try{
 
     mysqli_commit($connection);
 
-    $sqlSelect = 'SELECT * FROM users WHERE id = ?';
-    if($stmt = mysqli_prepare($connection, $sqlSelect)){
-        mysqli_stmt_bind_param($stmt, 'i', $id);
-        
-        if(mysqli_stmt_execute($stmt)){
-            //var_dump($stmt);
-            $result = mysqli_stmt_get_result($stmt);
-            //var_dump(mysqli_num_rows($result));
-            //die;
-            if(mysqli_num_rows($result) < 1){
-                throw new Exception('Erro ao criar registo.');
-            }
-        }else{
+    $sqlUpdate = 'UPDATE users SET name = ?, password = ? WHERE id = ?';
+    if ($stmt = mysqli_prepare($connection, $sqlUpdate)) {
+        mysqli_stmt_bind_param($stmt, 'ssi', $name, $password, $id);
+        if (mysqli_stmt_execute($stmt)) {
+            // Confirmar a transação
+            mysqli_commit($connection);
+            echo json_encode([
+                'success' => true,
+                'message' => 'Registo atualizado com sucesso'
+            ]);
+        } else {
             throw new Exception('Erro ao executar a query');
         }
     }
 
-    $result = [
-        'success' => true,
-        'data' => [
-            'id' => $id,
-            'name' => $name,
-            'email' => $email,
-            'password' => $password,
-        ]
-    ];
-    echo(json_encode($result, JSON_PRETTY_PRINT));
-    
-}catch(Exception $e){
+    // Fechar a transação e enviar resposta final
+    $sqlSelect = 'SELECT * FROM users WHERE id = ?';
+    if ($stmt = mysqli_prepare($connection, $sqlSelect)) {
+        mysqli_stmt_bind_param($stmt, 'i', $id);
+        if (mysqli_stmt_execute($stmt)) {
+            $result = mysqli_stmt_get_result($stmt);
+            if ($row = mysqli_fetch_assoc($result)) {
+                $result = [
+                    'success' => true,
+                    'data' => [
+                        'id' => $row['id'],
+                        'name' => $row['name'],
+                        'email' => $row['email'],
+                        'password' => $row['password'],
+                    ]
+                ];
+                echo json_encode($result, JSON_PRETTY_PRINT);
+            } else {
+                throw new Exception('Erro ao buscar o utilizador');
+            }
+        }
+    }
+
+} catch (Exception $e) {
+    // Reverter a transação em caso de erro
     mysqli_rollback($connection);
-    
     $result = [
         'success' => false,
         'message' => $e->getMessage()
     ];
+    echo json_encode($result);
 
-    echo(json_encode($result));
-
-}finally{
+} finally {
+    // Fechar a conexão
     mysqli_close($connection);
 }
-?>

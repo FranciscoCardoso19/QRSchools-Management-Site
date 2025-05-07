@@ -33,7 +33,7 @@ try{
     if($stmt = mysqli_prepare($connection, $sqlSelect)){
         
         if(mysqli_stmt_execute($stmt)){
-            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $id_cargo);
+            mysqli_stmt_bind_result($stmt, $id, $name, $email, $password, $idCargo);
             
             $users = [];
 
