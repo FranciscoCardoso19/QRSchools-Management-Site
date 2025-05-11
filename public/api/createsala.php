@@ -1,6 +1,7 @@
 <?php
 require '../../vendor/autoload.php';
 include_once('../../backend/db.php');
+include_once('../../backend/models/Sala.php');
 
 use Firebase\JWT\JWT;
 use Firebase\JWT\Key;
@@ -10,7 +11,7 @@ $key = 'psi_jwt_secret_key';
 
 try {
     $headers = getallheaders();
-    $authorization = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+    $authorization = $headers['Authorization'] ?? '';
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método não permitido');
@@ -23,38 +24,43 @@ try {
     $jwt = $matches[1];
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    if (!isset($_POST['nome'])) {
-        throw new Exception('Dados insuficientes. Preencha os dados corretamente');
+    // Validação dos campos
+    $requiredFields = ['id', 'nome', 'piso'];
+    foreach ($requiredFields as $field) {
+        if (!isset($_POST[$field]) || trim($_POST[$field]) === '') {
+            throw new Exception("Campo obrigatório ausente ou vazio: $field");
+        }
     }
 
+    $id = $_POST['id'];
     $nome = trim($_POST['nome']);
+    $piso = trim($_POST['piso']);
 
-    if (strlen($nome) === 0) {
-        throw new Exception('Dados insuficientes. Preencha os dados corretamente');
-    }
+    $sala = new Sala($id, $nome, $piso);
 
     $pdo->beginTransaction();
 
-    $sql = 'INSERT INTO cargos (nome) VALUES (:nome)';
+    $sql = 'INSERT INTO salas (id, nome, piso) VALUES (:id, :nome, :piso)';
     $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(':nome', $nome, PDO::PARAM_STR);
+    $stmt->bindParam(':id', $id);
+    $stmt->bindParam(':nome', $nome);
+    $stmt->bindParam(':piso', $piso);
 
     if (!$stmt->execute()) {
         throw new Exception('Erro ao executar a query');
     }
 
     if ($stmt->rowCount() === 0) {
-        throw new Exception('Erro ao inserir o Cargo na base de dados');
+        throw new Exception('Erro ao inserir a Sala na base de dados');
     }
 
     $pdo->commit();
 
-    $result = [
+    echo json_encode([
         'success' => true,
-        'message' => 'Cargo criado com sucesso',
-    ];
-
-    echo json_encode($result, JSON_PRETTY_PRINT);
+        'message' => 'Sala criada com sucesso',
+        'data' => $sala->toString()
+    ], JSON_PRETTY_PRINT);
 
 } catch (ExpiredException $e) {
     echo json_encode([
