@@ -10,7 +10,7 @@ $key = 'psi_jwt_secret_key';
 
 try {
     $headers = getallheaders();
-    $authorization = isset($headers['Authorization']) ? $headers['Authorization'] : '';
+    $authorization = $headers['Authorization'] ?? '';
 
     if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
         throw new Exception('Método não permitido');
@@ -23,44 +23,44 @@ try {
     $jwt = $matches[1];
     $jwtDecoded = JWT::decode($jwt, new Key($key, 'HS256'));
 
-    if (!isset($_POST['nome'])) {
-        throw new Exception('Dados insuficientes. Preencha os dados corretamente');
-    }
+    $input = json_decode(file_get_contents("php://input"), true) ?? [];
+    $id = $input['id'] ?? ($_GET['id'] ?? null);
 
-    $nome = trim($_POST['nome']);
-
-    if (strlen($nome) === 0) {
-        throw new Exception('Dados insuficientes. Preencha os dados corretamente');
+    if (!$id) {
+        throw new Exception('ID da sala não fornecido.');
     }
 
     $pdo->beginTransaction();
 
-    $sql = 'INSERT INTO cargos (nome) VALUES (:nome)';
+    $sql = 'DELETE FROM salas WHERE id = :id';
     $stmt = $pdo->prepare($sql);
-    $stmt->bindParam(':nome', $nome, PDO::PARAM_STR);
+    $stmt->bindParam(':id', $id, PDO::PARAM_STR);
 
     if (!$stmt->execute()) {
-        throw new Exception('Erro ao executar a query');
+        throw new Exception('Erro ao executar a query.');
     }
 
     if ($stmt->rowCount() === 0) {
-        throw new Exception('Erro ao inserir o Cargo na base de dados');
+        throw new Exception('Sala não encontrada ou já removida.');
     }
 
     $pdo->commit();
 
-    $result = [
+    echo json_encode([
         'success' => true,
-        'message' => 'Cargo criado com sucesso',
-    ];
-
-    echo json_encode($result, JSON_PRETTY_PRINT);
+        'message' => 'Sala removida com sucesso.'
+    ], JSON_PRETTY_PRINT);
 
 } catch (ExpiredException $e) {
+    if ($pdo->inTransaction()) {
+        $pdo->rollBack();
+    }
+
     echo json_encode([
         'success' => false,
         'error' => 'Token expirado: ' . $e->getMessage()
     ]);
+
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
@@ -70,6 +70,7 @@ try {
         'success' => false,
         'error' => $e->getMessage()
     ]);
+
 } finally {
     $pdo = null;
 }
