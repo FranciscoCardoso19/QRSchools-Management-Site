@@ -27,12 +27,12 @@ try {
     $id = isset($input['id']) ? intval($input['id']) : (isset($_GET['id']) ? intval($_GET['id']) : null);
 
     if (!$id) {
-        throw new Exception('ID do cargo não fornecido.');
+        throw new Exception('ID do inventario não fornecido.');
     }
 
     $pdo->beginTransaction();
 
-    $sqlDelete = 'DELETE FROM cargos WHERE id = :id';
+    $sqlDelete = 'DELETE FROM inventarios WHERE id = :id';
     $stmt = $pdo->prepare($sqlDelete);
     $stmt->bindParam(':id', $id, PDO::PARAM_INT);
 
@@ -41,14 +41,14 @@ try {
     }
 
     if ($stmt->rowCount() === 0) {
-        throw new Exception('Cargo não encontrado ou já removido.');
+        throw new Exception('inventario não encontrado ou já removido.');
     }
 
     $pdo->commit();
 
     echo json_encode([
         'success' => true,
-        'message' => 'Cargo removido com sucesso.'
+        'message' => 'inventario removido com sucesso.'
     ], JSON_PRETTY_PRINT);
 
 } catch (ExpiredException $e) {
