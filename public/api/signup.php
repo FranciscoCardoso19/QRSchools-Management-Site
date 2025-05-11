@@ -1,5 +1,6 @@
 <?php
 include_once('../../backend/db.php');
+include_once('../../backend/sendemailwelcome.php');
 
 try {
     if ($_SERVER['REQUEST_METHOD'] != 'POST') {
@@ -57,25 +58,20 @@ try {
 
     $pdo->commit();
 
-    $result = [
+    echo json_encode([
         'success' => true,
-        'message' => 'Utilizador registado com sucesso',
-    ];
-
-    echo json_encode($result);
+        'message' => 'Utilizador registado com sucesso'
+    ]);
 
 } catch (Exception $e) {
     if ($pdo->inTransaction()) {
         $pdo->rollBack();
     }
 
-    $result = [
+    echo json_encode([
         'success' => false,
         'erro' => $e->getMessage()
-    ];
-
-    echo json_encode($result);
-
+    ]);
 } finally {
     $pdo = null;
 }
